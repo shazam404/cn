@@ -1,0 +1,42 @@
+sudo ip netns del one 2>/dev/null
+sudo ip netns del two 2>/dev/null
+sudo ip netns del three 2>/dev/null
+
+sudo ip netns add one
+sudo ip netns add two
+sudo ip netns add three
+
+sudo ip link add eth0 netns one type veth peer name eth1 netns two
+sudo ip link add eth2 netns two type veth peer name eth3 netns three
+
+sudo ip netns exec one ip addr add 10.0.0.1/30 dev eth0
+sudo ip netns exec one ip link set eth0 up
+sudo ip netns exec one ip link set lo up
+sudo ip netns exec one ip route add default via 10.0.0.2 dev eth0
+
+sudo ip netns exec two ip addr add 10.0.0.2/30 dev eth1
+sudo ip netns exec two ip addr add 10.0.0.5/30 dev eth2
+sudo ip netns exec two ip link set eth1 up
+sudo ip netns exec two ip link set eth2 up
+sudo ip netns exec two ip link set lo up
+sudo ip netns exec two sysctl -w net.ipv4.ip_forward=1
+
+sudo ip netns exec three ip addr add 10.0.0.6/30 dev eth3
+sudo ip netns exec three ip link set eth3 up
+sudo ip netns exec three ip link set lo up
+sudo ip netns exec three ip route add default via 10.0.0.5 dev eth3
+
+# one -> two
+sudo ip netns exec one ping -c 2 10.0.0.2
+
+# two -> one
+sudo ip netns exec two ping -c 2 10.0.0.1
+
+# three -> two
+sudo ip netns exec two ping -c 2 10.0.0.6
+
+#three -> one
+sudo ip netns exec three ping -c 2 10.0.0.1
+
+#one -> three
+sudo ip netns exec one ping -c 2 10.0.0.6
